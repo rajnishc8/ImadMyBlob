@@ -1,5 +1,6 @@
 package com.mobitribe.myblog;
 
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -11,6 +12,15 @@ import android.widget.Toast;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.support.v7.app.AlertDialog;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+
+import java.io.IOException;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 
 public class AuthenticationActivity extends AppCompatActivity {
@@ -52,7 +62,7 @@ public class AuthenticationActivity extends AppCompatActivity {
                 //gets called when the button is clicked.
                 if(isFormValid()) {
                     //perform registration
-                    //showAlert();
+                    performRegistration();
                 }else {
                     //Replace the text in the textview
                     //replaceText(enteredText);
@@ -62,7 +72,7 @@ public class AuthenticationActivity extends AppCompatActivity {
 
         //initialising progress dialog
         progressDialog = new ProgressDialog(this);
-        progressDialog.setIndeterminate(false);
+        progressDialog.setIndeterminate(true);
         progressDialog.setMessage("Please wait");
 
 
@@ -85,13 +95,85 @@ public class AuthenticationActivity extends AppCompatActivity {
 
     private void performSignIn() {
         //Mock an api call to sign in.
-        new SignInTask().execute(username.getText().toString(),password.getText().toString());
+        //new SignInTask().execute(username.getText().toString(),password.getText().toString());
+
+        //Do the real one
+        showProgressDialog(true);
+        AuthenticationRequest AuthReq = new AuthenticationRequest(username.getText().toString().trim(), password.getText().toString().trim());
+        ApiManager.getApiInterface().login(AuthReq).enqueue(new Callback<MessageResponse>() {
+            @Override
+            public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+                showProgressDialog(false);
+                if(response.isSuccessful()) {
+                     //showAlert("welcome", response.body().getMessage());
+                    navigateToArticleListActivity();
+                 } else {
+                     try {
+                         String errorMessage = response.errorBody().string();
+                         try{
+                             ErrorResponse errorResponse = new Gson().fromJson(errorMessage, ErrorResponse.class);
+                             showAlert("SignIn failed", errorResponse.getError());
+                         } catch(JsonSyntaxException jsonException) {
+                             jsonException.printStackTrace();
+                             showAlert("SignIn failed", "Something went wrong");
+                         }
+                     } catch (IOException e) {
+                         e.printStackTrace();
+                         showAlert("SignIn failed", "Something went wrong-1");
+                     }
+                 }
+
+            }
+
+            @Override
+            public void onFailure(Call<MessageResponse> call, Throwable t) {
+                showProgressDialog(false);
+                showAlert("SignIn failed", "Something went wrong-2");
+            }
+        });
+
     }
 
 
    private void performRegistration() {
-        //Mock an api call to register.
-    }
+       //Mock an api call to register.
+       //new RegisterationTask().execute(username.getText().toString(),password.getText().toString());
+
+       //Do the real one
+       showProgressDialog(true);
+       AuthenticationRequest AuthReq = new AuthenticationRequest(username.getText().toString().trim(), password.getText().toString().trim());
+       ApiManager.getApiInterface().registration(AuthReq).enqueue(new Callback<MessageResponse>() {
+           @Override
+           public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+               showProgressDialog(false);
+               if(response.isSuccessful()) {
+                   showAlert("welcome", response.body().getMessage());
+               } else {
+                   try {
+                       String errorMessage = response.errorBody().string();
+                       try{
+                           ErrorResponse errorResponse = new Gson().fromJson(errorMessage, ErrorResponse.class);
+                           showAlert("Registration failed", errorResponse.getError());
+                       } catch(JsonSyntaxException jsonException) {
+                           jsonException.printStackTrace();
+                           showAlert("Registration failed", "Something went wrong");
+                       }
+                   } catch (IOException e) {
+                       e.printStackTrace();
+                       showAlert("Registration failed", "Something went wrong-1");
+                   }
+               }
+
+           }
+
+           @Override
+           public void onFailure(Call<MessageResponse> call, Throwable t) {
+               showProgressDialog(false);
+               showAlert("Registration failed", "Something went wrong-2");
+           }
+       });
+
+   }
 
     private void showProgressDialog(Boolean shouldShow) {
         if(shouldShow) {
@@ -157,10 +239,23 @@ public class AuthenticationActivity extends AppCompatActivity {
             String password = strings[1];
 
             // do something with this
+            //simulate processing
+            try{
+                Thread.sleep(2000);
+            } catch(InterruptedException e) {
+                e.printStackTrace();
+            }
+
             return username.contentEquals(mockUsername) && password.contentEquals(mockPassword);
 
             //return true; //or false
         }
+    }
+
+    private void navigateToArticleListActivity()
+    {
+        Intent intent = new Intent(this, ArticleListActivity.class);
+        startActivity(intent);
     }
 
 }
